@@ -43,7 +43,14 @@ python3 skills/imgslim/scripts/imgslim.py compress assets/*.png --preset balance
 python3 skills/imgslim/scripts/imgslim.py compress photo.jpg --format webp --preset high
 ```
 
-Presets: `high` (visually lossless) · `balanced` · `small` · `lossless`. Results are never larger than the original.
+Presets: `high` (default, visually lossless — matches TinyPNG/iLoveIMG quality at smaller sizes, see [docs/BENCHMARK.md](docs/BENCHMARK.md)) · `balanced` · `small` · `lossless`.
+
+### Safety guarantees (learned the hard way — [docs/POSTMORTEM.md](docs/POSTMORTEM.md))
+
+- Results are **never larger** than the original; same-format lossy wins under 5% are discarded (no pointless generation loss).
+- **Already-lossy webp is never lossy-re-encoded** (`--force` to override) — that's how flat dark backgrounds get banded while metrics still look fine.
+- Every PNG result passes the same DSSIM gate as the lossy codecs, falling back to lossless when quantization can't stay clean.
+- `--report review.html` renders before/after for every changed file; the skill requires showing it to a human before committing lossy batches.
 
 ## Layout
 

@@ -90,12 +90,21 @@ python3 <skill_dir>/scripts/imgslim.py compress <files...> \
 - The script guarantees results are never larger than the original
   (same-format; status `kept` means it was already optimal).
 
-### 4. Report
+### 4. Verify with the user — mandatory for batches
 
-Show the user the per-file table the script prints (or summarize `--json` for
-large batches): original → new size, %, resizes and conversions performed,
-plus reference updates you made. Recommend they visually spot-check one or two
-of the most aggressively compressed files (`small` preset especially).
+Metrics are not enough: DSSIM can read "fine" while flat dark-color areas
+show visible banding (this happened in production — see docs/POSTMORTEM.md).
+
+- Any lossy batch (>3 files): pass `--report review.html`, then **send/open
+  that page for the user and ask them to eyeball it — especially dark-mode
+  assets — before anything is committed.** Never commit image changes
+  yourself.
+- Also show the per-file table the script prints (or summarize `--json`),
+  plus any reference updates you made after conversions.
+- Re-running lossy compression on already-compressed files stacks generation
+  loss. The engine auto-skips lossy webp and keeps <5% wins, but the only
+  clean way to shrink an already-lossy asset further is re-exporting from the
+  design source (Figma/Sketch) and compressing that once.
 
 ## Safety rules
 

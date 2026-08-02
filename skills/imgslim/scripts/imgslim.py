@@ -512,6 +512,58 @@ ENCODERS = {"png": encode_png, "jpeg": encode_jpeg, "webp": encode_webp}
 EXT = {"png": ".png", "jpeg": ".jpg", "webp": ".webp"}
 
 
+MIME = {".png": "image/png", ".webp": "image/webp",
+        ".jpg": "image/jpeg", ".jpeg": "image/jpeg"}
+
+
+def write_report(html_path, results):
+    """Self-contained before/after HTML so a human can eyeball every lossy
+    change before committing. Top 50 by compression ratio get embedded images."""
+    import base64
+    import html as h
+    done = sorted((r for r in results if r["status"] == "done" and "_orig" in r),
+                  key=lambda r: r["new"] / max(1, r["orig"]))
+    cards = []
+    for r in done[:50]:
+        dest = r.get("dest", r["path"])
+        try:
+            new_bytes = open(dest, "rb").read()
+        except OSError:
+            continue
+        if len(r["_orig"]) > 2_000_000 or len(new_bytes) > 2_000_000:
+            continue
+        om = MIME.get(os.path.splitext(r["path"])[1].lower(), "image/png")
+        nm = MIME.get(os.path.splitext(dest)[1].lower(), "image/png")
+        pct = (1 - r["new"] / r["orig"]) * 100 if r["orig"] else 0
+        cards.append(
+            f'<section><h2>{h.escape(r["path"])} · {human(r["orig"])} → '
+            f'{human(r["new"])} (−{pct:.0f}%)</h2><div class="pair">'
+            f'<figure><figcaption>before</figcaption><img src="data:{om};base64,'
+            f'{base64.b64encode(r["_orig"]).decode()}"></figure>'
+            f'<figure><figcaption>after</figcaption><img src="data:{nm};base64,'
+            f'{base64.b64encode(new_bytes).decode()}"></figure></div></section>')
+    skipped = [r for r in results if r["status"] != "done"]
+    rows = "".join(f'<tr><td>{h.escape(r["path"])}</td><td>{r["status"]}</td>'
+                   f'<td>{h.escape(r.get("note") or r.get("error") or "")}</td></tr>'
+                   for r in skipped)
+    doc = ('<meta charset="utf-8"><title>imgslim review</title><style>'
+           'body{font:14px system-ui;margin:24px;background:#16181f;color:#dde}'
+           'h2{font-size:13px;font-weight:500;margin:26px 0 6px;color:#9ab}'
+           '.pair{display:flex;gap:12px;flex-wrap:wrap}figure{margin:0}'
+           'figcaption{font-size:11px;color:#778;margin-bottom:4px}'
+           'img{max-width:460px;border-radius:6px;display:block;cursor:zoom-in}'
+           'img:hover{image-rendering:pixelated;transform:scale(2);'
+           'transform-origin:top left}table{margin-top:30px;border-collapse:'
+           'collapse;font-size:12px}td{padding:3px 10px;border-top:1px solid #333}'
+           '</style><p><b>Check dark, flat-color areas at zoom (hover = 2×) '
+           'before committing.</b> Showing the 50 most-compressed files.</p>'
+           + "".join(cards)
+           + (f'<table><tr><td colspan=3><b>not modified</b></td></tr>{rows}</table>'
+              if rows else ""))
+    with open(html_path, "w") as f:
+        f.write(doc)
+
+
 def cmd_compress(args):
     preset = args.preset
     results = []
@@ -545,6 +597,12 @@ def cmd_compress(args):
         resize = None
         if args.resize:
             resize = tuple(int(x) for x in args.resize.lower().split("x"))
+        orig_bytes_data = None
+        if args.report:
+            try:
+                orig_bytes_data = open(src, "rb").read()
+            except OSError:
+                pass
         ws = None
         try:
             ws = Workspace(src, args.max_dim, resize)
@@ -568,16 +626,25 @@ def cmd_compress(args):
                 os.makedirs(os.path.dirname(dest) or ".", exist_ok=True)
                 shutil.copyfile(out, dest + ".imgslim-tmp")
                 os.replace(dest + ".imgslim-tmp", dest)
-            results.append({"path": src, "dest": dest, "status": "done",
-                            "orig": orig_bytes, "new": new_bytes,
-                            "converted": converting,
-                            "dims": "x".join(map(str, read_dimensions(ws.work)[:2]))})
+            entry = {"path": src, "dest": dest, "status": "done",
+                     "orig": orig_bytes, "new": new_bytes,
+                     "converted": converting,
+                     "dims": "x".join(map(str, read_dimensions(ws.work)[:2]))}
+            if orig_bytes_data is not None and not args.dry_run:
+                entry["_orig"] = orig_bytes_data
+            results.append(entry)
         except RuntimeError as e:
             results.append({"path": src, "status": "error", "error": str(e)})
         finally:
             if ws:
                 ws.cleanup()
 
+    if args.report and not args.dry_run:
+        write_report(args.report, results)
+        print(f"\nreview page: {args.report} — check dark flat-color areas "
+              f"at zoom before committing")
+    for r in results:
+        r.pop("_orig", None)
     report(results, args)
 
 
@@ -662,6 +729,8 @@ def main():
     c.add_argument("--output-dir", help="write results into this directory")
     c.add_argument("--force", action="store_true",
                    help="allow lossy re-encode of already-lossy webp sources")
+    c.add_argument("--report", metavar="HTML",
+                   help="write a before/after visual review page")
     c.add_argument("--dry-run", action="store_true", help="report sizes, write nothing")
     c.add_argument("--json", action="store_true")
     c.set_defaults(func=cmd_compress)
