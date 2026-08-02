@@ -72,6 +72,12 @@ python3 <skill_dir>/scripts/imgslim.py compress <files...> \
   visibly bands. Every PNG result is DSSIM-verified (falls back to lossless
   when lossy can't stay under the target), but don't push presets down on
   these assets in the first place.
+- **Already-lossy webp sources are skipped automatically** (same-format,
+  no-resize case): they were optimized at export time, and lossy-on-lossy
+  re-encoding stacks generation loss that shows as banding on flat-color UI
+  assets long before DSSIM looks alarming. Android `res/` trees are full of
+  these. Don't pass `--force` unless the user explicitly accepts the quality
+  trade after being told this.
 - Fixing an OVERSIZED flag: add `--resize WxH` (exact, for icons) or
   `--max-dim N` (bounding box, for photos).
 - `--in-place` only when the file is tracked and clean in git (check

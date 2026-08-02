@@ -196,6 +196,16 @@ def png_has_alpha(path):
         return False
 
 
+def webp_is_lossy(path):
+    try:
+        with open(path, "rb") as f:
+            head = f.read(64)
+        return head[:4] == b"RIFF" and head[8:12] == b"WEBP" and \
+            b"VP8 " in head and b"VP8L" not in head
+    except OSError:
+        return False
+
+
 # ------------------------------------------------------- placement size rules
 
 ANDROID_DENSITY = {"ldpi": 0.75, "mdpi": 1.0, "hdpi": 1.5,
@@ -508,6 +518,17 @@ def cmd_compress(args):
             continue
         converting = target_fmt != src_fmt
 
+        # Re-encoding an already-lossy webp stacks generation loss for little
+        # gain (these files were optimized at export time) — visible banding on
+        # flat-color UI assets long before metrics look alarming. Leave them be.
+        if src_fmt == "webp" and target_fmt == "webp" and preset != "lossless" \
+                and not args.force and not (args.max_dim or args.resize) \
+                and webp_is_lossy(src):
+            results.append({"path": src, "status": "kept",
+                            "orig": orig_bytes, "new": orig_bytes,
+                            "note": "already lossy webp; use --force to re-encode"})
+            continue
+
         resize = None
         if args.resize:
             resize = tuple(int(x) for x in args.resize.lower().split("x"))
@@ -571,7 +592,7 @@ def report(results, args):
             print(f"{r['path']}: {human(r['orig'])} -> {human(r['new'])} "
                   f"(-{pct:.1f}%, {r['dims']}){extra}{note}")
         elif r["status"] == "kept":
-            print(f"{r['path']}: already optimal, kept original")
+            print(f"{r['path']}: {r.get('note', 'already optimal')} — kept original")
         else:
             print(f"{r['path']}: {r['status'].upper()} - {r.get('error', '')}")
     if done:
@@ -626,6 +647,8 @@ def main():
     c.add_argument("--in-place", action="store_true",
                    help="overwrite the source file (same-format only)")
     c.add_argument("--output-dir", help="write results into this directory")
+    c.add_argument("--force", action="store_true",
+                   help="allow lossy re-encode of already-lossy webp sources")
     c.add_argument("--dry-run", action="store_true", help="report sizes, write nothing")
     c.add_argument("--json", action="store_true")
     c.set_defaults(func=cmd_compress)
