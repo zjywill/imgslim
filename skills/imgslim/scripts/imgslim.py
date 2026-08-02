@@ -197,11 +197,23 @@ def png_has_alpha(path):
 
 
 def webp_is_lossy(path):
+    """Walk the RIFF chunks (VP8X containers put the bitstream after
+    metadata chunks) and report whether the image data is lossy VP8."""
     try:
         with open(path, "rb") as f:
-            head = f.read(64)
-        return head[:4] == b"RIFF" and head[8:12] == b"WEBP" and \
-            b"VP8 " in head and b"VP8L" not in head
+            if f.read(4) != b"RIFF" or (f.seek(8) or f.read(4)) != b"WEBP":
+                return False
+            while True:
+                hdr = f.read(8)
+                if len(hdr) < 8:
+                    return False
+                tag = hdr[:4]
+                size = int.from_bytes(hdr[4:8], "little")
+                if tag == b"VP8 ":
+                    return True
+                if tag == b"VP8L":
+                    return False
+                f.seek(size + (size & 1), 1)
     except OSError:
         return False
 
