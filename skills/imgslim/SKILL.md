@@ -63,8 +63,11 @@ python3 <skill_dir>/scripts/imgslim.py compress <files...> \
 
 - Presets: `high` (visually lossless, DSSIM ≤ 0.0010) / `balanced` (default,
   ≤ 0.0028) / `small` (≤ 0.0065) / `lossless`. Lossy presets binary-search the
-  quality per image against the DSSIM target — this per-image search is what
-  matches iLoveIMG's compression; never hand-pick fixed qualities.
+  quality per image against the DSSIM target — never hand-pick fixed qualities.
+  Benchmarked (docs/BENCHMARK.md): `high` matches TinyPNG/iLoveIMG's default
+  quality at a 6–9% smaller file for JPEG; `balanced` is deliberately more
+  aggressive than those services. If the user says "compress like
+  TinyPNG/iLoveIMG would", use `high`.
 - Fixing an OVERSIZED flag: add `--resize WxH` (exact, for icons) or
   `--max-dim N` (bounding box, for photos).
 - `--in-place` only when the file is tracked and clean in git (check
