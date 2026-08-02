@@ -201,7 +201,8 @@ def webp_is_lossy(path):
     metadata chunks) and report whether the image data is lossy VP8."""
     try:
         with open(path, "rb") as f:
-            if f.read(4) != b"RIFF" or (f.seek(8) or f.read(4)) != b"WEBP":
+            head = f.read(12)
+            if head[:4] != b"RIFF" or head[8:12] != b"WEBP":
                 return False
             while True:
                 hdr = f.read(8)
