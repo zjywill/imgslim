@@ -58,16 +58,20 @@ PNG (or lossless WebP); the script tries both for WebP and keeps the smaller.
 
 ```
 python3 <skill_dir>/scripts/imgslim.py compress <files...> \
-    --preset balanced --format keep --in-place
+    --format keep --in-place
 ```
 
-- Presets: `high` (visually lossless, DSSIM ≤ 0.0010) / `balanced` (default,
-  ≤ 0.0028) / `small` (≤ 0.0065) / `lossless`. Lossy presets binary-search the
+- Presets: `high` (default; visually lossless, DSSIM ≤ 0.0010) / `balanced`
+  (≤ 0.0028) / `small` (≤ 0.0065) / `lossless`. Lossy presets binary-search the
   quality per image against the DSSIM target — never hand-pick fixed qualities.
   Benchmarked (docs/BENCHMARK.md): `high` matches TinyPNG/iLoveIMG's default
-  quality at a 6–9% smaller file for JPEG; `balanced` is deliberately more
-  aggressive than those services. If the user says "compress like
-  TinyPNG/iLoveIMG would", use `high`.
+  quality at a 6–9% smaller file for JPEG. Only drop to `balanced`/`small` for
+  photos where the user explicitly prioritizes size over fidelity.
+- **App icons, logos, and UI art get `high` or `lossless` — never lower.**
+  Users pixel-peep icons; subtle dark gradients are where palette quantization
+  visibly bands. Every PNG result is DSSIM-verified (falls back to lossless
+  when lossy can't stay under the target), but don't push presets down on
+  these assets in the first place.
 - Fixing an OVERSIZED flag: add `--resize WxH` (exact, for icons) or
   `--max-dim N` (bounding box, for photos).
 - `--in-place` only when the file is tracked and clean in git (check

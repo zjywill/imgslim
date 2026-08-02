@@ -402,15 +402,25 @@ def quality_search(ws, encode, target, lo=30, hi=95):
 def encode_png(ws, preset, outdir):
     out = os.path.join(outdir, "out.png")
     src = ws.png()
-    if preset == "lossless" or not tool("pngquant"):
+    lossy_ok = False
+    if preset != "lossless" and tool("pngquant"):
+        # pngquant's internal quality gate misses banding in subtle dark
+        # gradients (flat-color icons with soft shadows), so its output must
+        # also pass the same DSSIM gate the other codecs use; escalate the
+        # quality floor once, then give up and go lossless.
+        target = PRESETS[preset]["dssim"]
+        for qrange in (PRESETS[preset]["png_q"], "95-100"):
+            r = run([tool("pngquant"), "--quality", qrange, "--speed", "1",
+                     "--strip", "--force", "--output", out, src])
+            if r.returncode == 99:  # even the range's min quality not reachable
+                break
+            if r.returncode != 0:
+                raise RuntimeError(f"pngquant failed: {r.stderr.strip()}")
+            if not tool("dssim") or dssim_score(src, out) <= target:
+                lossy_ok = True
+                break
+    if not lossy_ok:
         shutil.copyfile(src, out)
-    else:
-        r = run([tool("pngquant"), "--quality", PRESETS[preset]["png_q"], "--speed", "1",
-                 "--strip", "--force", "--output", out, src])
-        if r.returncode == 99:  # quality target not reachable -> lossless only
-            shutil.copyfile(src, out)
-        elif r.returncode != 0:
-            raise RuntimeError(f"pngquant failed: {r.stderr.strip()}")
     if tool("oxipng"):
         run([tool("oxipng"), "-o", "2", "--strip", "safe", "-q", out])
     return out
@@ -609,7 +619,7 @@ def main():
 
     c = sub.add_parser("compress", help="compress/convert images")
     c.add_argument("files", nargs="+")
-    c.add_argument("--preset", choices=list(PRESETS), default="balanced")
+    c.add_argument("--preset", choices=list(PRESETS), default="high")
     c.add_argument("--format", choices=["keep", "png", "jpeg", "webp"], default="keep")
     c.add_argument("--max-dim", type=int, help="downscale so max(w,h) <= N before encoding")
     c.add_argument("--resize", help="exact WxH resize before encoding (e.g. 48x48)")
