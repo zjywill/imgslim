@@ -1,0 +1,13 @@
+{
+  "name": "imgslim",
+  "owner": {
+    "name": "zjywill"
+  },
+  "plugins": [
+    {
+      "name": "imgslim",
+      "source": "./",
+      "description": "Placement-aware, perceptual-quality image compression for software projects (PNG/WebP/JPEG)"
+    }
+  ]
+}
