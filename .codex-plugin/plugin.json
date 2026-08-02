@@ -1,0 +1,16 @@
+{
+  "name": "imgslim",
+  "version": "0.1.0",
+  "description": "Placement-aware, perceptual-quality image compression for software projects (PNG/WebP/JPEG) — iLoveIMG-class quality search, fully local",
+  "skills": "./skills/",
+  "author": {
+    "name": "Junyi Zhang",
+    "url": "https://github.com/zjywill"
+  },
+  "license": "MIT",
+  "interface": {
+    "displayName": "imgslim",
+    "shortDescription": "Project-aware image compression: right size, right format, perceptual quality search",
+    "category": "Coding"
+  }
+}

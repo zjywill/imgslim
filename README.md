@@ -20,7 +20,7 @@ The installer brew-installs codec deps (`pngquant oxipng webp mozjpeg dssim`) an
 
 Cross-platform: the engine is stdlib-only python3 and works on Linux/Windows too — decode/resize uses `sips` on macOS and falls back to ImageMagick elsewhere; `imgslim.py deps` prints the right install command per platform (apt/cargo on Linux, scoop on Windows).
 
-Claude Code plugin route instead of the symlink:
+Plugin-marketplace route instead of the symlink — the repo ships manifests for both ecosystems (`.claude-plugin/` + `.codex-plugin/` and `.agents/plugins/marketplace.json`), so in Claude Code **or** Codex:
 
 ```
 /plugin marketplace add zjywill/imgslim
@@ -52,6 +52,8 @@ skills/imgslim/SKILL.md              agent workflow + judgment rules
 skills/imgslim/references/           WebP compat matrix, platform size tables
 skills/imgslim/scripts/imgslim.py    engine: analyze / compress / deps (python3, stdlib only)
 .claude-plugin/                      Claude Code plugin + marketplace manifests
+.codex-plugin/                       Codex plugin manifest
+.agents/plugins/marketplace.json     cross-agent marketplace catalogue
 install.sh                           deps + symlinks for Claude Code and Codex
 ```
 
